@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Fashion Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .camera-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .camera-header {
+            padding: 1rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: #000;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .camera-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+        }
+
+        .camera-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .controls {
+            padding: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .detection-panel, .stats-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detection-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid;
+        }
+
+        .detection-item.shirt {
+            border-left-color: #3b82f6;
+        }
+
+        .detection-item.pants {
+            border-left-color: #8b5cf6;
+        }
+
+        .detection-item.dress {
+            border-left-color: #ec4899;
+        }
+
+        .detection-item.jacket {
+            border-left-color: #f59e0b;
+        }
+
+        .detection-details {
+            flex: 1;
+        }
+
+        .detection-label {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .detection-confidence {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-top: 0.2rem;
+        }
+
+        .detection-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4ade80;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .video-container {
+                height: 300px;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Live Fashion Detection</h1>
+        <p>Real-time clothing detection and color analysis</p>
+    </div>
+
+    <div class="main-container">
+        <div class="camera-section">
+            <div class="camera-container">
+                <div class="camera-header">
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        <span id="status-text">Ready to start</span>
+                    </div>
+                    <div id="fps-counter">0 FPS</div>
+                </div>
+                
+                <div class="video-container">
+                    <video id="video" autoplay muted playsinline style="display: none;"></video>
+                    <canvas id="canvas"></canvas>
+                    <div id="camera-placeholder" class="camera-placeholder">
+                        <svg class="camera-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5M17 9V7H9v2H7V5h12v4h-2M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
+                        </svg>
+                        <h3>Camera Access Required</h3>
+                        <p>Click "Start Camera" to begin detection</p>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="start-btn" class="btn btn-primary">
+                        📹 Start Camera
+                    </button>
+                    <button id="stop-btn" class="btn btn-secondary" disabled>
+                        ⏹️ Stop Camera
+                    </button>
+                    <button id="capture-btn" class="btn btn-secondary" disabled>
+                        📸 Capture
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="detection-panel">
+                <div class="panel-title">
+                    🔍 Live Detections
+                </div>
+                <div id="detections-list">
+                    <div style="text-align: center; opacity: 0.6; padding: 2rem;">
+                        No detections yet
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <div class="panel-title">
+                    📊 Detection Stats
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-detections">0</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="confidence-avg">0%</div>
+                        <div class="stat-label">Avg Confidence</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="shirts-count">0</div>
+                        <div class="stat-label">Shirts</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="other-count">0</div>
+                        <div class="stat-label">Other Items</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class FashionDetector {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isDetecting = false;
+                this.detections = [];
+                this.totalDetections = 0;
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                
+                this.setupEventListeners();
+                this.setupCanvas();
+                this.startDetectionLoop();
+            }
+
+            setupEventListeners() {
+                document.getElementById('start-btn').addEventListener('click', () => this.startCamera());
+                document.getElementById('stop-btn').addEventListener('click', () => this.stopCamera());
+                document.getElementById('capture-btn').addEventListener('click', () => this.captureFrame());
+            }
+
+            setupCanvas() {
+                const container = document.querySelector('.video-container');
+                const rect = container.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+            }
+
+            async startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 640, height: 480, facingMode: 'user' }
+                    });
+                    
+                    this.video.srcObject = stream;
+                    this.video.style.display = 'block';
+                    document.getElementById('camera-placeholder').style.display = 'none';
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.setupCanvas();
+                        this.isDetecting = true;
+                        this.updateStatus('Detecting...', true);
+                        this.updateButtons(false, false, false);
+                    };
+                    
+                } catch (error) {
+                    console.error('Camera access denied:', error);
+                    alert('Camera access is required for this application');
+                }
+            }
+
+            stopCamera() {
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                    this.video.srcObject = null;
+                }
+                
+                this.video.style.display = 'none';
+                document.getElementById('camera-placeholder').style.display = 'flex';
+                this.isDetecting = false;
+                this.updateStatus('Stopped', false);
+                this.updateButtons(true, true, true);
+                this.clearCanvas();
+            }
+
+            captureFrame() {
+                const link = document.createElement('a');
+                link.download = `fashion-detection-${Date.now()}.png`;
+                link.href = this.canvas.toDataURL();
+                link.click();
+            }
+
+            updateButtons(start, stop, capture) {
+                document.getElementById('start-btn').disabled = !start;
+                document.getElementById('stop-btn').disabled = stop;
+                document.getElementById('capture-btn').disabled = capture;
+            }
+
+            updateStatus(text, isActive) {
+                document.getElementById('status-text').textContent = text;
+                const dot = document.querySelector('.status-dot');
+                dot.style.background = isActive ? '#4ade80' : '#6b7280';
+            }
+
+            clearCanvas() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            // Simulate object detection with realistic clothing items
+            simulateDetection() {
+                const clothingItems = [
+                    { name: 'shirt', colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'] },
+                    { name: 'pants', colors: ['#1f2937', '#3b82f6', '#6b7280'] },
+                    { name: 'dress', colors: ['#ec4899', '#8b5cf6', '#ef4444'] },
+                    { name: 'jacket', colors: ['#1f2937', '#374151', '#6b7280'] },
+                ];
+
+                // Randomly generate 1-3 detections
+                const numDetections = Math.floor(Math.random() * 3) + 1;
+                const detections = [];
+
+                for (let i = 0; i < numDetections; i++) {
+                    const item = clothingItems[Math.floor(Math.random() * clothingItems.length)];
+                    const color = item.colors[Math.floor(Math.random() * item.colors.length)];
+                    
+                    detections.push({
+                        label: item.name,
+                        confidence: (Math.random() * 0.3 + 0.7), // 70-100%
+                        color: color,
+                        x: Math.random() * (this.canvas.width - 200),
+                        y: Math.random() * (this.canvas.height - 100),
+                        width: Math.random() * 150 + 100,
+                        height: Math.random() * 120 + 80
+                    });
+                }
+
+                return detections;
+            }
+
+            drawDetections(detections) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                detections.forEach(detection => {
+                    // Draw bounding box
+                    this.ctx.strokeStyle = detection.color;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.strokeRect(detection.x, detection.y, detection.width, detection.height);
+                    
+                    // Draw label background
+                    const label = `${detection.label} ${Math.round(detection.confidence * 100)}%`;
+                    this.ctx.font = '16px Arial';
+                    const textWidth = this.ctx.measureText(label).width;
+                    
+                    this.ctx.fillStyle = detection.color;
+                    this.ctx.fillRect(detection.x, detection.y - 25, textWidth + 10, 25);
+                    
+                    // Draw label text
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.fillText(label, detection.x + 5, detection.y - 8);
+                });
+            }
+
+            updateDetectionsList(detections) {
+                const list = document.getElementById('detections-list');
+                
+                if (detections.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; opacity: 0.6; padding: 2rem;">No detections</div>';
+                    return;
+                }
+
+                list.innerHTML = detections.map(detection => `
+                    <div class="detection-item ${detection.label}">
+                        <div class="detection-details">
+                            <div class="detection-label">${detection.label.toUpperCase()}</div>
+                            <div class="detection-confidence">${Math.round(detection.confidence * 100)}% confidence</div>
+                        </div>
+                        <div class="detection-color" style="background-color: ${detection.color}"></div>
+                    </div>
+                `).join('');
+            }
+
+            updateStats(detections) {
+                const totalDetections = this.totalDetections + detections.length;
+                const avgConfidence = detections.length > 0 
+                    ? Math.round(detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length * 100)
+                    : 0;
+                
+                const shirtsCount = detections.filter(d => d.label === 'shirt').length;
+                const otherCount = detections.length - shirtsCount;
+
+                document.getElementById('total-detections').textContent = totalDetections;
+                document.getElementById('confidence-avg').textContent = `${avgConfidence}%`;
+                document.getElementById('shirts-count').textContent = shirtsCount;
+                document.getElementById('other-count').textContent = otherCount;
+            }
+
+            updateFPS() {
+                this.frameCount++;
+                const currentTime = performance.now();
+                const deltaTime = currentTime - this.lastTime;
+                
+                if (deltaTime >= 1000) {
+                    const fps = Math.round((this.frameCount * 1000) / deltaTime);
+                    document.getElementById('fps-counter').textContent = `${fps} FPS`;
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+
+            startDetectionLoop() {
+                const detectLoop = () => {
+                    if (this.isDetecting && this.video.videoWidth > 0) {
+                        // Simulate detection every few frames for performance
+                        if (this.frameCount % 15 === 0) {
+                            const detections = this.simulateDetection();
+                            this.detections = detections;
+                            this.drawDetections(detections);
+                            this.updateDetectionsList(detections);
+                            this.updateStats(detections);
+                        }
+                        
+                        this.updateFPS();
+                    }
+                    
+                    requestAnimationFrame(detectLoop);
+                };
+                
+                detectLoop();
+            }
+        }
+
+        // Initialize the application
+        window.addEventListener('load', () => {
+            new FashionDetector();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas');
+            const container = document.querySelector('.video-container');
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        });
+    </script>
+</body>
+</html>

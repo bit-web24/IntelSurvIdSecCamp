@@ -1,0 +1,25 @@
+[project]
+name = "intelsurvidseccamp"
+version = "0.1.0"
+description = "Intelligent Surveillance and Identification for Secure Campus"
+authors = [
+    {name = "Bittu Kumar",email = "bitweb24@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask (>=3.1.1,<4.0.0)",
+    "waitress (>=3.0.2,<4.0.0)",
+    "pillow (>=11.2.1,<12.0.0)",
+    "ultralytics (>=8.3.134,<9.0.0)",
+    "tensorflow (>=2.19.0,<3.0.0)",
+    "roboflow (>=1.1.64,<2.0.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "opencv-python (>=4.11.0.86,<5.0.0.0)",
+    "flask-socketio (>=5.5.1,<6.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
